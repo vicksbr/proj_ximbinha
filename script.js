@@ -3,7 +3,7 @@ let chamados = JSON.parse(localStorage.getItem("chamados")) || [];
 let servicesResponse = getServices();
 // Funções utilitárias
 
-const chamadosToServices = (arr) =>
+const chamadosToService = (arr) =>
   arr.map((c) => ({
     id: c.id,
     titulo: c.title,
@@ -26,35 +26,39 @@ async function getServices() {
     }
   )
     .then((response) => response.json())
-    .then((response) => chamadosToServices(response));
-
-  console.log(response);
+    .then((response) => chamadosToService(response));
 
   return response;
 }
 
-async function postService(service) {
-  fetch("https://qzizekhfpuugteuiabav.supabase.co/functions/v1/add-service", {
-    method: "POST",
-    headers: {
-      Authorization:
-        "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF6aXpla2hmcHV1Z3RldWlhYmF2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDYxNzE5MjQsImV4cCI6MjA2MTc0NzkyNH0.PdrXHcFBsFVvZZxOgloOkwUQwChdW3Gkek2WicdiWq4",
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(service),
-  })
-    .then((response) => {
-      if (!response.ok) {
-        throw new Error(`HTTP error! Status: ${response.status}`);
+async function addService(service) {
+  try {
+    const response = await fetch(
+      "https://qzizekhfpuugteuiabav.supabase.co/functions/v1/add-service",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          Authorization:
+            "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF6aXpla2hmcHV1Z3RldWlhYmF2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDYxNzE5MjQsImV4cCI6MjA2MTc0NzkyNH0.PdrXHcFBsFVvZZxOgloOkwUQwChdW3Gkek2WicdiWq4",
+        },
+        body: JSON.stringify(service),
       }
-      return response.json();
-    })
-    .then((data) => {
-      console.log("Success:", data);
-    })
-    .catch((error) => {
-      console.error("Error:", error);
-    });
+    );
+
+    console.log("response status:", response.status);
+    const data = await response.json();
+    console.log("response body:", data);
+
+    if (!response.ok) {
+      throw new Error(data?.error?.message || "Unknown Supabase error");
+    }
+
+    return data;
+  } catch (err) {
+    console.error("addService error:", err);
+  }
 }
 
 function formatarData(data) {
@@ -92,21 +96,18 @@ document
     e.preventDefault();
 
     const novoChamado = {
-      id: gerarId(),
-      data: new Date().toISOString(),
-      titulo: document.getElementById("titulo").value,
-      descricao: document.getElementById("descricao").value,
-      ordemServico: document.getElementById("ordem-servico").value,
-      atendente: document.getElementById("atendente").value,
+      title: document.getElementById("titulo").value,
+      description: document.getElementById("descricao").value,
+      service_number: document.getElementById("ordem-servico").value,
+      employee_name: document.getElementById("atendente").value,
       status: document.getElementById("status").value,
-      observacoes: document.getElementById("observacoes").value,
+      observations: document.getElementById("observacoes").value,
     };
 
-    chamados.unshift(novoChamado);
-    postService(novoChamado);
+    console.log("novo chamado antes do addservice", novoChamado);
 
+    addService(novoChamado);
     this.reset();
-
     alert("Chamado registrado com sucesso!");
   });
 
@@ -127,7 +128,7 @@ document.getElementById("limpar-filtro").addEventListener("click", function () {
 // Renderizar chamados na tabela
 async function renderizarChamados() {
   const services = await getServices();
-  localStorage.setItem("services", JSON.stringify(services));
+  localStorage.setItem("chamados", JSON.stringify(services));
 
   const statusFiltro = document.getElementById("filtro-status").value;
   const dataFiltro = document.getElementById("filtro-data").value;
@@ -135,7 +136,7 @@ async function renderizarChamados() {
     .getElementById("filtro-atendente")
     .value.toLowerCase();
 
-  const chamadosFiltrados = chamados.filter((chamado) => {
+  const chamadosFiltrados = services.filter((chamado) => {
     const passaStatus =
       statusFiltro === "todos" || chamado.status === statusFiltro;
     const passaData = !dataFiltro || chamado.data.includes(dataFiltro);
