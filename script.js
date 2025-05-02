@@ -2,6 +2,7 @@
 let chamados = JSON.parse(localStorage.getItem("chamados")) || [];
 let servicesResponse = getServices();
 // Funções utilitárias
+const authToken = localStorage.getItem("auth_token");
 
 const chamadosToService = (arr) =>
   arr.map((c) => ({
@@ -40,8 +41,7 @@ async function addService(service) {
         headers: {
           "Content-Type": "application/json",
           Accept: "application/json",
-          Authorization:
-            "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF6aXpla2hmcHV1Z3RldWlhYmF2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDYxNzE5MjQsImV4cCI6MjA2MTc0NzkyNH0.PdrXHcFBsFVvZZxOgloOkwUQwChdW3Gkek2WicdiWq4",
+          Authorization: authToken,
         },
         body: JSON.stringify(service),
       }
@@ -60,6 +60,31 @@ async function addService(service) {
     console.error("addService error:", err);
   }
 }
+
+const deleteService = async (serviceId) => {
+  try {
+    const response = await fetch(
+      "https://qzizekhfpuugteuiabav.supabase.co/functions/v1/delete-service",
+      {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: authToken,
+        },
+        body: JSON.stringify({ id: serviceId }),
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`Error: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    console.log("Service deleted successfully:", data);
+  } catch (error) {
+    console.error("Error deleting service:", error);
+  }
+};
 
 function formatarData(data) {
   if (!data) return new Date().toLocaleDateString("pt-BR");
@@ -240,10 +265,10 @@ function editarStatus(id) {
   }
 }
 
-function excluirChamado(id) {
+async function excluirChamado(id) {
   if (confirm("Tem certeza que deseja excluir este chamado?")) {
-    chamados = chamados.filter((c) => c.id !== id);
-    salvarDados();
+    const response = await deleteService(id);
+    console.log(response);
     renderizarChamados();
   }
 }
